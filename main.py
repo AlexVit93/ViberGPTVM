@@ -9,7 +9,7 @@ from viberbot.api.viber_requests import ViberMessageRequest, ViberConversationSt
 from viberbot.api.viber_requests import ViberSubscribedRequest, ViberUnsubscribedRequest
 
 app = Flask(__name__)
-from config import VIBER_AUTH_TOKEN
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 viber = Api(BotConfiguration(
     name='ChatGPTPersonalBotbyVM',
     avatar='https://dl-media.viber.com/1/share/2/long/vibes/icon/image/0x0/7a08/3c87d21eceedb833743a81c19b74cea8c1c3e4ef66e7c86b71d82d16c1147a08.jpg',
-    auth_token=VIBER_AUTH_TOKEN
+    auth_token="52100bf26727e139-ef744c60c27c6fe-6baa33f46d9d4d19"
 ))
 
 @app.route('/viber-webhook', methods=['POST'])
