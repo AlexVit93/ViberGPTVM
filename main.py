@@ -6,7 +6,7 @@ from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.messages import TextMessage
 from viberbot.api.viber_requests import ViberMessageRequest, ViberConversationStartedRequest, ViberFailedRequest
-from viberbot.api.viber_requests import ViberSubscribedRequest, ViberUnsubscribedRequest
+from viberbot.api.viber_requests import ViberSubscribedRequest
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +22,7 @@ def incoming():
     logging.debug("received request. post data: {0}".format(request.get_data()))
     
     if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+        logging.error("Invalid signature")
         return Response(status=403)
     
     viber_request = viber.parse_request(request.get_data())
@@ -34,10 +35,11 @@ def incoming():
         viber.send_messages(viber_request.user.id, [
             TextMessage(text="Thanks for subscribing!")
         ])
-
+    elif isinstance(viber_request, ViberMessageRequest):
+        message_received_callback(viber_request)
     elif isinstance(viber_request, ViberFailedRequest):
-        pass
-    
+        logging.error("Message failed")
+
     return Response(status=200)
 
 conversation_history = {}
@@ -51,18 +53,25 @@ def trim_history(history, max_length=4096):
 
 def message_received_callback(viber_request):
     if isinstance(viber_request, ViberMessageRequest):
-        user_id = viber_request.sender.id
-        user_input = viber_request.message.text
+        try:
+            user_id = viber_request.sender.id
+            user_input = viber_request.message.text
 
-        viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
+            logging.info(f"Received message from {user_id}: {user_input}")
 
-        if user_id not in conversation_history:
-            conversation_history[user_id] = []
+            viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
 
-        conversation_history[user_id].append({"role": "user", "content": user_input})
-        conversation_history[user_id] = trim_history(conversation_history[user_id])
+            if user_id not in conversation_history:
+                conversation_history[user_id] = []
 
-        chat_history = conversation_history[user_id]
+            conversation_history[user_id].append({"role": "user", "content": user_input})
+            conversation_history[user_id] = trim_history(conversation_history[user_id])
+
+            chat_history = conversation_history[user_id]
+        
+        except Exception as e:
+            logging.error(f"Error in message_received_callback: {e}")
+
 
         try:
             response = g4f.ChatCompletion.create(
@@ -83,8 +92,8 @@ def message_received_callback(viber_request):
         viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
 
-viber.set_webhook('https://worker-production-2716.up.railway.app/viber-webhook')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)), debug=True)
 
+viber.set_webhook('https://worker-production-2716.up.railway.app/viber-webhook')
