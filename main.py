@@ -8,7 +8,7 @@ from config import VIBER_AUTH_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 
-# Настройка бота Viber
+
 viber = Api(BotConfiguration(
     name='ChatGPTPersonalBotbyVM',
     avatar='https://dl-media.viber.com/1/share/2/long/vibes/icon/image/0x0/7a08/3c87d21eceedb833743a81c19b74cea8c1c3e4ef66e7c86b71d82d16c1147a08.jpg',
