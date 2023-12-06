@@ -58,5 +58,5 @@ def message_received_callback(viber_request):
         viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
 if __name__ == '__main__':
-    viber.set_webhook('https://your.server.com/')
+    viber.set_webhook('https://worker-production-2716.up.railway.app')
 
