@@ -2,6 +2,7 @@ g4f==0.1.9.2
 viberbot==1.0.12
 requests==2.31.0
 fastapi==0.104.1
+flask==3.0.0
 uvicorn==0.24.0.post1
 httpx==0.25.2
 python-multipart==0.0.6

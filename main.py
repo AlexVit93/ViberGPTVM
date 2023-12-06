@@ -1,9 +1,14 @@
 import logging
+import os
 import g4f
+from flask import Flask, request, Response
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
 from viberbot.api.messages import TextMessage
-from viberbot.api.viber_requests import ViberMessageRequest
+from viberbot.api.viber_requests import ViberMessageRequest, ViberConversationStartedRequest, ViberFailedRequest
+from viberbot.api.viber_requests import ViberSubscribedRequest, ViberUnsubscribedRequest
+
+app = Flask(__name__)
 from config import VIBER_AUTH_TOKEN
 
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +19,31 @@ viber = Api(BotConfiguration(
     avatar='https://dl-media.viber.com/1/share/2/long/vibes/icon/image/0x0/7a08/3c87d21eceedb833743a81c19b74cea8c1c3e4ef66e7c86b71d82d16c1147a08.jpg',
     auth_token=VIBER_AUTH_TOKEN
 ))
+
+@app.route('/viber-webhook', methods=['POST'])
+def incoming():
+    logging.debug("received request. post data: {0}".format(request.get_data()))
+    
+    if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
+        return Response(status=403)
+    
+    viber_request = viber.parse_request(request.get_data())
+
+    if isinstance(viber_request, ViberMessageRequest):
+        message = viber_request.message
+        viber.send_messages(viber_request.sender.id, [message])
+    elif isinstance(viber_request, ViberSubscribedRequest):
+        viber.send_messages(viber_request.user.id, [
+            TextMessage(text="Thanks for subscribing!")
+        ])
+    elif isinstance(viber_request, ViberUnsubscribedRequest):
+        pass
+    elif isinstance(viber_request, ViberConversationStartedRequest):
+        pass
+    elif isinstance(viber_request, ViberFailedRequest):
+        pass
+    
+    return Response(status=200)
 
 conversation_history = {}
 
@@ -58,5 +88,6 @@ def message_received_callback(viber_request):
         viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
 if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)), debug=True)
     viber.set_webhook('https://worker-production-2716.up.railway.app')
 
