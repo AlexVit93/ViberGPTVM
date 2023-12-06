@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 viber = Api(BotConfiguration(
     name='Чат Йопите',
     avatar='https://dl-media.viber.com/1/share/2/long/vibes/icon/image/0x0/7a08/3c87d21eceedb833743a81c19b74cea8c1c3e4ef66e7c86b71d82d16c1147a08.jpg',
-    auth_token="52100bf26727e139-ef744c60c27c6fe-6baa33f46d9d4d19"
+    auth_token="521050f57467dfbf-f45b9b21ace92422-5e8da79493cf619c"
 ))
 
 @app.route('/viber-webhook', methods=['POST'])
