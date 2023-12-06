@@ -52,44 +52,76 @@ def trim_history(history, max_length=4096):
     return history
 
 def message_received_callback(viber_request):
-    if isinstance(viber_request, ViberMessageRequest):
-        try:
-            user_id = viber_request.sender.id
-            user_input = viber_request.message.text
+    user_id = viber_request.sender.id
+    user_input = viber_request.message.text
+    chat_gpt_response = "Извините, произошла ошибка."
 
-            logging.info(f"Received message from {user_id}: {user_input}")
+    logging.info(f"Received message from {user_id}: {user_input}")
 
-            viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
+    if user_id not in conversation_history:
+        conversation_history[user_id] = []
 
-            if user_id not in conversation_history:
-                conversation_history[user_id] = []
+    conversation_history[user_id].append({"role": "user", "content": user_input})
+    conversation_history[user_id] = trim_history(conversation_history[user_id])
 
-            conversation_history[user_id].append({"role": "user", "content": user_input})
-            conversation_history[user_id] = trim_history(conversation_history[user_id])
+    chat_history = conversation_history[user_id]
 
-            chat_history = conversation_history[user_id]
+    try:
+        # Возможно, стоит отправлять сообщение о начале обработки запроса только если это действительно необходимо.
+        viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
+
+        response = g4f.ChatCompletion.create(
+            model=g4f.models.default,
+            messages=chat_history,
+            provider=g4f.Provider.GeekGpt,
+        )
+        chat_gpt_response = response['choices'][0]['message']['content'] if response else "Извините, произошла ошибка."
+    except Exception as e:
+        logging.error(f"{g4f.Provider.GeekGpt.__name__} error: {e}")
+
+    conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+
+    viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+
+# def message_received_callback(viber_request):
+#     if isinstance(viber_request, ViberMessageRequest):
+#         try:
+#             user_id = viber_request.sender.id
+#             user_input = viber_request.message.text
+
+#             logging.info(f"Received message from {user_id}: {user_input}")
+
+#             viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
+
+#             if user_id not in conversation_history:
+#                 conversation_history[user_id] = []
+
+#             conversation_history[user_id].append({"role": "user", "content": user_input})
+#             conversation_history[user_id] = trim_history(conversation_history[user_id])
+
+#             chat_history = conversation_history[user_id]
         
-        except Exception as e:
-            logging.error(f"Error in message_received_callback: {e}")
+#         except Exception as e:
+#             logging.error(f"Error in message_received_callback: {e}")
 
 
-        try:
-            response = g4f.ChatCompletion.create(
-                model=g4f.models.default,
-                messages=chat_history,
-                provider=g4f.Provider.GeekGpt,
-            )
-            chat_gpt_response = response
-        except Exception as e:
-            print(f"{g4f.Provider.GeekGpt.__name__}:", e)
-            chat_gpt_response = "Извините, произошла ошибка."
+#         try:
+#             response = g4f.ChatCompletion.create(
+#                 model=g4f.models.default,
+#                 messages=chat_history,
+#                 provider=g4f.Provider.GeekGpt,
+#             )
+#             chat_gpt_response = response
+#         except Exception as e:
+#             print(f"{g4f.Provider.GeekGpt.__name__}:", e)
+#             chat_gpt_response = "Извините, произошла ошибка."
 
-        conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
-        print(conversation_history)
-        length = sum(len(message["content"]) for message in conversation_history[user_id])
-        print(length)
+#         conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+#         print(conversation_history)
+#         length = sum(len(message["content"]) for message in conversation_history[user_id])
+#         print(length)
 
-        viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+#         viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
 
 
