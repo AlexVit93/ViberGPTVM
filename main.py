@@ -32,6 +32,8 @@ async def send_welcome(message: types.Message):
     user_id = message.from_user.id
     user_input = message.text
 
+    await message.reply("Подождите пожалуйста, я обрабатываю ваш запрос...")
+
     if user_id not in conversation_history:
         conversation_history[user_id] = []
 
