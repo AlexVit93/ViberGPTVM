@@ -54,7 +54,6 @@ def trim_history(history, max_length=4096):
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
-    chat_gpt_response = "Извините, произошла ошибка."  # Переменная для хранения ответа
 
     logging.info(f"Received message from {user_id}: {user_input}")
 
@@ -75,12 +74,18 @@ def message_received_callback(viber_request):
 
         logging.info(f"g4f response: {response}")
 
-        if isinstance(response, dict) and 'choices' in response:
+        # Проверка, является ли ответ строкой и отправка её пользователю
+        if isinstance(response, str):
+            chat_gpt_response = response
+        # Если ответ - словарь и содержит 'choices', отправляем содержимое 'choices'
+        elif isinstance(response, dict) and 'choices' in response:
             chat_gpt_response = response['choices'][0]['message']['content']
         else:
             logging.error(f"Unexpected response format or error: {response}")
+            chat_gpt_response = "Извините, произошла ошибка."
     except Exception as e:
         logging.error(f"Error while calling g4f API: {e}")
+        chat_gpt_response = "Извините, произошла ошибка при обработке вашего запроса."
 
     viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
     conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
