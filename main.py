@@ -51,11 +51,21 @@ def trim_history(history, max_length=4096):
         current_length -= len(removed_message["content"])
     return history
 
+last_processed_message_token = None
+
 def message_received_callback(viber_request):
+    global last_processed_message_token
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
+    message_token = viber_request.message_token  # Идентификатор сообщения от Viber
+
+    # Проверяем, было ли это сообщение уже обработано
+    if message_token == last_processed_message_token:
+        logging.info(f"Duplicate message {message_token} received and ignored.")
+        return
 
     logging.info(f"Received message from {user_id}: {user_input}")
+
 
     if user_id not in conversation_history:
         conversation_history[user_id] = []
@@ -97,6 +107,7 @@ def message_received_callback(viber_request):
     # Добавление ответа в историю беседы
     conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
 
+    last_processed_message_token = message_token
 
 
 if __name__ == '__main__':
