@@ -74,21 +74,29 @@ def message_received_callback(viber_request):
 
         logging.info(f"g4f response: {response}")
 
-        # Проверка, является ли ответ строкой и отправка её пользователю
-        if isinstance(response, str):
-            chat_gpt_response = response
-        # Если ответ - словарь и содержит 'choices', отправляем содержимое 'choices'
-        elif isinstance(response, dict) and 'choices' in response:
+        # Предполагаем, что успешный ответ от g4f - это словарь с ключом 'choices'
+        if isinstance(response, dict) and 'choices' in response and response['choices']:
             chat_gpt_response = response['choices'][0]['message']['content']
         else:
-            logging.error(f"Unexpected response format or error: {response}")
-            chat_gpt_response = "Извините, произошла ошибка."
+            # Если ответ API - строка, предполагаем, что это полезный ответ, и отправляем его пользователю
+            if isinstance(response, str):
+                chat_gpt_response = response
+            else:
+                logging.error(f"Unexpected response format or error: {response}")
+                chat_gpt_response = "Извините, произошла ошибка."
     except Exception as e:
         logging.error(f"Error while calling g4f API: {e}")
-        chat_gpt_response = "Извините, произошла ошибка при обработке вашего запроса."
+        # Обработка ошибки Too Many Requests
+        if e.response.status_code == 429:
+            chat_gpt_response = "Извините, слишком много запросов. Попробуйте позже."
+        else:
+            chat_gpt_response = "Извините, произошла ошибка при обработке вашего запроса."
 
+    # Отправка сообщения пользователю
     viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+    # Добавление ответа в историю беседы
     conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+
 
 
 if __name__ == '__main__':
