@@ -54,16 +54,15 @@ def trim_history(history, max_length=4096):
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
-    message_token = viber_request.message.token  # Получаем токен сообщения для логирования
-    chat_gpt_response = "Извините, произошла ошибка."
+    message_token = getattr(viber_request, 'token', None)
 
-    logging.info(f"Received message from {user_id} with token {message_token}: {user_input}")
+    logging.info(f"Received message from {user_id}: {user_input}")
 
     if user_id not in conversation_history:
         conversation_history[user_id] = []
 
-    # Проверяем, обрабатывали ли мы уже это сообщение
-    if any(message["token"] == message_token for message in conversation_history[user_id]):
+    # Проверяем, обрабатывали ли мы уже это сообщение по уникальному идентификатору
+    if message_token and any(message.get("token") == message_token for message in conversation_history[user_id]):
         logging.info(f"Message with token {message_token} already processed.")
         return
 
