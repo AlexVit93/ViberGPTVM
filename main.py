@@ -59,12 +59,15 @@ def message_received_callback(viber_request):
     user_input = viber_request.message.text
     message_token = viber_request.message_token  # Идентификатор сообщения от Viber
 
-    # Проверяем, было ли это сообщение уже обработано
+    logging.info(f"Received message from {user_id}: {user_input}")
+
+    # Проверяем, не обрабатывали ли мы уже это сообщение
     if message_token == last_processed_message_token:
         logging.info(f"Duplicate message {message_token} received and ignored.")
         return
 
-    logging.info(f"Received message from {user_id}: {user_input}")
+    # Обновляем последний обработанный токен
+    last_processed_message_token = message_token
 
 
     if user_id not in conversation_history:
