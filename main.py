@@ -54,44 +54,36 @@ def trim_history(history, max_length=4096):
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
-    message_token = getattr(viber_request, 'token', None)
-    chat_gpt_response = None  # Инициализация переменной перед использованием
+    chat_gpt_response = "Извините, произошла ошибка."  
 
     logging.info(f"Received message from {user_id}: {user_input}")
 
     if user_id not in conversation_history:
         conversation_history[user_id] = []
 
-    if message_token and any(message.get("token") == message_token for message in conversation_history[user_id]):
-        logging.info(f"Message with token {message_token} already processed.")
-        return
-
-    conversation_history[user_id].append({"role": "user", "content": user_input, "token": message_token})
+    conversation_history[user_id].append({"role": "user", "content": user_input})
     conversation_history[user_id] = trim_history(conversation_history[user_id])
 
     chat_history = conversation_history[user_id]
 
     try:
-        viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
-
         response = g4f.ChatCompletion.create(
             model=g4f.models.default,
             messages=chat_history,
             provider=g4f.Provider.GeekGpt,
         )
 
-        # Проверяем, что response является словарём и содержит ключ 'choices'
         if isinstance(response, dict) and 'choices' in response:
             chat_gpt_response = response['choices'][0]['message']['content']
         else:
-            chat_gpt_response = "Извините, произошла ошибка."
-    except Exception as e:
-        logging.error(f"{g4f.Provider.GeekGpt.__name__} error: {e}")
-        chat_gpt_response = "Извините, произошла ошибка при обработке вашего запроса."
+            logging.error(f"Unexpected response format: {response}")
 
-    if chat_gpt_response:
-        conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response, "token": message_token})
-        viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+    except Exception as e:
+        logging.error(f"Error while calling g4f API: {e}")
+
+    viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+    conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)), debug=True)
