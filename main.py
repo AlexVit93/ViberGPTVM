@@ -71,6 +71,9 @@ def message_received_callback(viber_request):
     user_input = viber_request.message.text
     message_token = viber_request.message_token  # Идентификатор сообщения от Viber
 
+    logging.info(f"Current message token: {viber_request.message_token}")
+    logging.info(f"Last processed message token: {last_processed_message_token}")
+
     logging.info(f"Received message from {user_id}: {user_input}")
 
     # Проверяем, не обрабатывали ли мы уже это сообщение
