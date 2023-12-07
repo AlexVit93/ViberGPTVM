@@ -19,13 +19,25 @@ viber = Api(BotConfiguration(
 
 @app.route('/viber-webhook', methods=['POST'])
 def incoming():
+    global last_processed_message_token
     logging.debug("received request. post data: {0}".format(request.get_data()))
     
     if not viber.verify_signature(request.get_data(), request.headers.get('X-Viber-Content-Signature')):
         logging.error("Invalid signature")
         return Response(status=403)
-    
+
     viber_request = viber.parse_request(request.get_data())
+
+    # Получение message_token из запроса
+    message_token = getattr(viber_request, 'message_token', None)
+    
+    # Проверяем, не было ли это сообщение уже обработано
+    if message_token and message_token == last_processed_message_token:
+        logging.info(f"Duplicate message with token {message_token} received and ignored.")
+        return Response(status=200)
+
+    # Сохраняем token последнего обработанного сообщения
+    last_processed_message_token = message_token
 
     if isinstance(viber_request, ViberConversationStartedRequest):
         viber.send_messages(viber_request.user.id, [
