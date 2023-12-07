@@ -54,20 +54,25 @@ def trim_history(history, max_length=4096):
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
+    message_token = viber_request.message.token  # Получаем токен сообщения для логирования
     chat_gpt_response = "Извините, произошла ошибка."
 
-    logging.info(f"Received message from {user_id}: {user_input}")
+    logging.info(f"Received message from {user_id} with token {message_token}: {user_input}")
 
     if user_id not in conversation_history:
         conversation_history[user_id] = []
 
-    conversation_history[user_id].append({"role": "user", "content": user_input})
+    # Проверяем, обрабатывали ли мы уже это сообщение
+    if any(message["token"] == message_token for message in conversation_history[user_id]):
+        logging.info(f"Message with token {message_token} already processed.")
+        return
+
+    conversation_history[user_id].append({"role": "user", "content": user_input, "token": message_token})
     conversation_history[user_id] = trim_history(conversation_history[user_id])
 
     chat_history = conversation_history[user_id]
 
     try:
-        # Возможно, стоит отправлять сообщение о начале обработки запроса только если это действительно необходимо.
         viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
 
         response = g4f.ChatCompletion.create(
@@ -75,13 +80,48 @@ def message_received_callback(viber_request):
             messages=chat_history,
             provider=g4f.Provider.GeekGpt,
         )
-        chat_gpt_response = response['choices'][0]['message']['content'] if response else "Извините, произошла ошибка."
+        # Убедитесь, что вы обращаетесь к ответу правильно, здесь может быть источник ошибки
+        chat_gpt_response = response.choices[0].message.content if response else "Извините, произошла ошибка."
     except Exception as e:
         logging.error(f"{g4f.Provider.GeekGpt.__name__} error: {e}")
 
-    conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+    # Добавляем token к истории, чтобы проверять его в последующих сообщениях
+    conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response, "token": message_token})
 
     viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
+
+
+# def message_received_callback(viber_request):
+#     user_id = viber_request.sender.id
+#     user_input = viber_request.message.text
+#     chat_gpt_response = "Извините, произошла ошибка."
+
+#     logging.info(f"Received message from {user_id}: {user_input}")
+
+#     if user_id not in conversation_history:
+#         conversation_history[user_id] = []
+
+#     conversation_history[user_id].append({"role": "user", "content": user_input})
+#     conversation_history[user_id] = trim_history(conversation_history[user_id])
+
+#     chat_history = conversation_history[user_id]
+
+#     try:
+#         # Возможно, стоит отправлять сообщение о начале обработки запроса только если это действительно необходимо.
+#         viber.send_messages(user_id, [TextMessage(text="Подождите пожалуйста, я обрабатываю ваш запрос...")])
+
+#         response = g4f.ChatCompletion.create(
+#             model=g4f.models.default,
+#             messages=chat_history,
+#             provider=g4f.Provider.GeekGpt,
+#         )
+#         chat_gpt_response = response['choices'][0]['message']['content'] if response else "Извините, произошла ошибка."
+#     except Exception as e:
+#         logging.error(f"{g4f.Provider.GeekGpt.__name__} error: {e}")
+
+#     conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
+
+#     viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
 # def message_received_callback(viber_request):
 #     if isinstance(viber_request, ViberMessageRequest):
