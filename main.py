@@ -54,7 +54,7 @@ def trim_history(history, max_length=4096):
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
     user_input = viber_request.message.text
-    chat_gpt_response = "Извините, произошла ошибка."  
+    chat_gpt_response = "Извините, произошла ошибка."  # Переменная для хранения ответа
 
     logging.info(f"Received message from {user_id}: {user_input}")
 
@@ -73,11 +73,12 @@ def message_received_callback(viber_request):
             provider=g4f.Provider.GeekGpt,
         )
 
+        logging.info(f"g4f response: {response}")
+
         if isinstance(response, dict) and 'choices' in response:
             chat_gpt_response = response['choices'][0]['message']['content']
         else:
-            logging.error(f"Unexpected response format: {response}")
-
+            logging.error(f"Unexpected response format or error: {response}")
     except Exception as e:
         logging.error(f"Error while calling g4f API: {e}")
 
@@ -88,4 +89,4 @@ def message_received_callback(viber_request):
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)), debug=True)
 
-viber.set_webhook('https://worker-production-2716.up.railway.app/viber-webhook')
+# viber.set_webhook('https://worker-production-2716.up.railway.app/viber-webhook')
