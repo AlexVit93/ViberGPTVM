@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import g4f
@@ -19,6 +20,7 @@ viber = Api(BotConfiguration(
 
 @app.route('/viber-webhook', methods=['POST'])
 def incoming():
+    logging.debug(f"{datetime.now()}: received request. post data: {request.get_data()}")
     global last_processed_message_token
     logging.debug("received request. post data: {0}".format(request.get_data()))
     
@@ -71,18 +73,17 @@ def message_received_callback(viber_request):
     user_input = viber_request.message.text
     message_token = viber_request.message_token  # Идентификатор сообщения от Viber
 
-    logging.info(f"Current message token: {viber_request.message_token}")
-    logging.info(f"Last processed message token: {last_processed_message_token}")
+    logging.info(f"{datetime.now()}: Received message token: {message_token}")
 
-    logging.info(f"Received message from {user_id}: {user_input}")
-
-    # Проверяем, не обрабатывали ли мы уже это сообщение
+    # Проверка на дубликаты
     if message_token == last_processed_message_token:
-        logging.info(f"Duplicate message {message_token} received and ignored.")
+        logging.info(f"{datetime.now()}: Duplicate message with token {message_token} received and ignored.")
         return
+    else:
+        # Обновление токена только если это не дубликат
+        last_processed_message_token = message_token
 
-    # Обновляем последний обработанный токен
-    last_processed_message_token = message_token
+    logging.info(f"{datetime.now()}: Received message from {user_id}: {user_input}")
 
 
     if user_id not in conversation_history:
@@ -126,6 +127,7 @@ def message_received_callback(viber_request):
     conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
 
     last_processed_message_token = message_token
+    logging.info(f"{datetime.now()}: Response sent for message token: {message_token}")
 
 
 if __name__ == '__main__':
