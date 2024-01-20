@@ -124,6 +124,8 @@ def message_received_callback(viber_request):
     global last_processed_message_token
     with token_lock:  # Используем блокировку для безопасного доступа к глобальной переменной
         user_id = viber_request.sender.id
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
         user_input = viber_request.message.text
         message_token = getattr(viber_request, 'message_token', None)
 
@@ -147,8 +149,6 @@ def message_received_callback(viber_request):
         save_message(user_id, 'user', user_input)
 
     chat_history = conversation_history[user_id]
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
 
     try:
         response = g4f.ChatCompletion.create(
