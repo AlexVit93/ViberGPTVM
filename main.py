@@ -42,7 +42,7 @@ session = Session()
 # Ваши функции для сохранения/чтения из базы данных
 
 def save_message(user_id, role, content):
-    conversation = session.query(Conversation).get(user_id)
+    conversation = session.get(Conversation, user_id)
     if not conversation:
         conversation = Conversation(user_id=user_id)
 
@@ -57,7 +57,7 @@ def save_message(user_id, role, content):
     session.commit()
 
 def get_last_interaction(user_id):
-    conversation = session.query(Conversation).get(user_id)
+    conversation = session.get(Conversation, user_id)
     if conversation:
         return conversation.last_interaction_at
     return None
@@ -147,6 +147,8 @@ def message_received_callback(viber_request):
         save_message(user_id, 'user', user_input)
 
     chat_history = conversation_history[user_id]
+    if user_id not in conversation_history:
+        conversation_history[user_id] = []
 
     try:
         response = g4f.ChatCompletion.create(
