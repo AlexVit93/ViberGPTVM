@@ -12,20 +12,35 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from config import openai_api_key
 
-openai.api_key = openai_api_key
+# openai.api_key = openai_api_key
 
 
-def get_gpt_3_5_turbo_response(message_text):
-    response = openai.Completion.create(
-        model="gpt-3.5-turbo",
-        prompt=message_text,
-        temperature=0.7,
-        max_tokens=150,
-        top_p=1.0,
-        frequency_penalty=0.0,
-        presence_penalty=0.0
-    )
-    return (response.choices[0].text.strip())
+def get_gpt_3_5_turbo_response(user_input):
+    openai.api_key = openai_api_key
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Вы находитесь в чате с AI."},
+                {"role": "user", "content": user_input},
+            ]
+        )
+        return response.choices[0].message['content']
+    except Exception as e:
+        print(f"Ошибка при генерации ответа: {e}")
+        return ""
+
+# def get_gpt_3_5_turbo_response(message_text):
+#     response = openai.Completion.create(
+#         model="gpt-3.5-turbo",
+#         prompt=message_text,
+#         temperature=0.7,
+#         max_tokens=150,
+#         top_p=1.0,
+#         frequency_penalty=0.0,
+#         presence_penalty=0.0
+#     )
+#     return (response.choices[0].text.strip())
 
 
 Base = declarative_base()
