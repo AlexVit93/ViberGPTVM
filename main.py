@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 import os
-from openai import OpenAI
+import openai
 from flask import Flask, request, Response
 from viberbot import Api
 from viberbot.api.bot_configuration import BotConfiguration
@@ -12,24 +12,20 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from config import openai_api_key
 
-api_key = os.environ.get(openai_api_key)
-client = OpenAI(api_key=api_key)
+openai.api_key = openai_api_key
 
 
 def get_gpt_3_5_turbo_response(message_text):
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": message_text,
-            }
-        ],
+    response = openai.Completion.create(
         model="gpt-3.5-turbo",
+        prompt=message_text,
+        temperature=0.7,
+        max_tokens=150,
+        top_p=1.0,
+        frequency_penalty=0.0,
+        presence_penalty=0.0
     )
-    if chat_completion['choices']:
-        return chat_completion['choices'][0]['message']['content'].strip()
-    else:
-        return "Произошла ошибка при генерации ответа."
+    return (response.choices[0].text.strip())
 
 
 Base = declarative_base()
