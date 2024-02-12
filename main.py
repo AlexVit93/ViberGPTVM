@@ -61,26 +61,28 @@ class Conversation(Base):
 
     user_id = Column(String, primary_key=True)
     last_interaction_at = Column(DateTime, default=datetime.utcnow)
+    last_message_token = Column(String, nullable=True)
     messages = relationship('MessageHistory')
 
 
-# Инициализация движка SQLite и создание таблиц
 engine = create_engine('sqlite:///chatbot.db')
 Base.metadata.create_all(engine)
 
-# Создание сессии
 Session = sessionmaker(bind=engine)
 session = Session()
 
 
-def save_message(user_id, role, content):
-    conversation = session.get(Conversation, user_id)
+def save_message(user_id, role, content, message_token=None):
+    conversation = session.query(Conversation).filter(
+        Conversation.user_id == user_id).first()
     if not conversation:
         conversation = Conversation(user_id=user_id)
     message = MessageHistory(user_id=user_id, role=role, content=content)
     conversation.messages.append(message)
     if role == 'assistant':
         conversation.last_interaction_at = datetime.utcnow()
+        if message_token:
+            conversation.last_message_token = message_token
     session.add(conversation)
     session.add(message)
     session.commit()
@@ -111,6 +113,12 @@ def incoming():
     viber_request = viber.parse_request(request.get_data())
     message_token = getattr(viber_request, 'message_token', None)
 
+    if message_token:
+        conversation = session.query(Conversation).filter(
+            Conversation.user_id == viber_request.sender.id).first()
+        if conversation and conversation.last_message_token == message_token:
+            return Response(status=200)
+
     if isinstance(viber_request, ViberConversationStartedRequest):
         viber.send_messages(viber_request.user.id, [
             TextMessage(
@@ -125,6 +133,10 @@ def incoming():
     elif isinstance(viber_request, ViberFailedRequest):
         logging.error("Message failed")
 
+    if message_token:
+        save_message(viber_request.sender.id, 'system',
+                     'Processed request', message_token)
+
     return Response(status=200)
 
 
@@ -134,16 +146,12 @@ def message_received_callback(viber_request):
     logging.info(
         f"{datetime.now()}: Received message from {user_id}: {user_input}")
 
-    # Save user message to the database
     save_message(user_id, 'user', user_input)
 
-    # Простая реализация в качестве заглушки для ответа бота
-    # chat_gpt_response = "Простите, у меня сейчас нет ответа."
     chat_gpt_response = get_gpt_3_5_turbo_response(user_input)
 
     viber.send_messages(user_id, [TextMessage(text=chat_gpt_response)])
 
-    # Save assistant's message to the database
     save_message(user_id, 'assistant', chat_gpt_response)
     logging.info(
         f"{datetime.now()}: Response sent for message token: {viber_request.message_token}")
