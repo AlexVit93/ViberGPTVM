@@ -12,8 +12,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from config import openai_api_key
 
-# openai.api_key = openai_api_key
-
 
 def get_gpt_3_5_turbo_response(user_input):
     openai.api_key = openai_api_key
@@ -29,18 +27,6 @@ def get_gpt_3_5_turbo_response(user_input):
     except Exception as e:
         print(f"Ошибка при генерации ответа: {e}")
         return ""
-
-# def get_gpt_3_5_turbo_response(message_text):
-#     response = openai.Completion.create(
-#         model="gpt-3.5-turbo",
-#         prompt=message_text,
-#         temperature=0.7,
-#         max_tokens=150,
-#         top_p=1.0,
-#         frequency_penalty=0.0,
-#         presence_penalty=0.0
-#     )
-#     return (response.choices[0].text.strip())
 
 
 Base = declarative_base()
@@ -113,31 +99,59 @@ def incoming():
     viber_request = viber.parse_request(request.get_data())
     message_token = getattr(viber_request, 'message_token', None)
 
-    if message_token:
-        conversation = session.query(Conversation).filter(
-            Conversation.user_id == viber_request.sender.id).first()
-        if conversation and conversation.last_message_token == message_token:
-            return Response(status=200)
+    if isinstance(viber_request, (ViberMessageRequest, ViberConversationStartedRequest, ViberSubscribedRequest)) and hasattr(viber_request, 'sender'):
+        user_id = viber_request.sender.id
 
-    if isinstance(viber_request, ViberConversationStartedRequest):
-        viber.send_messages(viber_request.user.id, [
-            TextMessage(
-                text="Салют! Это наш чат Йопите, ну ты понял/а) Чем я могу тебе помочь сегодня?")
-        ])
-    elif isinstance(viber_request, ViberSubscribedRequest):
-        viber.send_messages(viber_request.user.id, [
-            TextMessage(text="Thanks for subscribing!")
-        ])
-    elif isinstance(viber_request, ViberMessageRequest):
-        message_received_callback(viber_request)
+        if message_token:
+            conversation = session.query(Conversation).filter(
+                Conversation.user_id == user_id).first()
+            if conversation and conversation.last_message_token == message_token:
+                return Response(status=200)
+
+        if isinstance(viber_request, ViberConversationStartedRequest):
+            viber.send_messages(viber_request.user.id, [
+                TextMessage(
+                    text="Салют! Это наш чат Йопите, ну ты понял/а) Чем я могу тебе помочь сегодня?")
+            ])
+        elif isinstance(viber_request, ViberSubscribedRequest):
+            viber.send_messages(viber_request.user.id, [
+                TextMessage(text="Thanks for subscribing!")
+            ])
+        elif isinstance(viber_request, ViberMessageRequest):
+            message_received_callback(viber_request)
+
+        if message_token:
+            save_message(viber_request.sender.id, 'system',
+                         'Processed request', message_token)
     elif isinstance(viber_request, ViberFailedRequest):
         logging.error("Message failed")
 
-    if message_token:
-        save_message(viber_request.sender.id, 'system',
-                     'Processed request', message_token)
-
     return Response(status=200)
+    # if message_token:
+    #     conversation = session.query(Conversation).filter(
+    #         Conversation.user_id == viber_request.sender.id).first()
+    #     if conversation and conversation.last_message_token == message_token:
+    #         return Response(status=200)
+
+    # if isinstance(viber_request, ViberConversationStartedRequest):
+    #     viber.send_messages(viber_request.user.id, [
+    #         TextMessage(
+    #             text="Салют! Это наш чат Йопите, ну ты понял/а) Чем я могу тебе помочь сегодня?")
+    #     ])
+    # elif isinstance(viber_request, ViberSubscribedRequest):
+    #     viber.send_messages(viber_request.user.id, [
+    #         TextMessage(text="Thanks for subscribing!")
+    #     ])
+    # elif isinstance(viber_request, ViberMessageRequest):
+    #     message_received_callback(viber_request)
+    # elif isinstance(viber_request, ViberFailedRequest):
+    #     logging.error("Message failed")
+
+    # if message_token:
+    #     save_message(viber_request.sender.id, 'system',
+    #                  'Processed request', message_token)
+
+    # return Response(status=200)
 
 
 def message_received_callback(viber_request):
