@@ -127,32 +127,6 @@ def incoming():
         logging.error("Message failed")
 
     return Response(status=200)
-    # if message_token:
-    #     conversation = session.query(Conversation).filter(
-    #         Conversation.user_id == viber_request.sender.id).first()
-    #     if conversation and conversation.last_message_token == message_token:
-    #         return Response(status=200)
-
-    # if isinstance(viber_request, ViberConversationStartedRequest):
-    #     viber.send_messages(viber_request.user.id, [
-    #         TextMessage(
-    #             text="Салют! Это наш чат Йопите, ну ты понял/а) Чем я могу тебе помочь сегодня?")
-    #     ])
-    # elif isinstance(viber_request, ViberSubscribedRequest):
-    #     viber.send_messages(viber_request.user.id, [
-    #         TextMessage(text="Thanks for subscribing!")
-    #     ])
-    # elif isinstance(viber_request, ViberMessageRequest):
-    #     message_received_callback(viber_request)
-    # elif isinstance(viber_request, ViberFailedRequest):
-    #     logging.error("Message failed")
-
-    # if message_token:
-    #     save_message(viber_request.sender.id, 'system',
-    #                  'Processed request', message_token)
-
-    # return Response(status=200)
-
 
 def message_received_callback(viber_request):
     user_id = viber_request.sender.id
